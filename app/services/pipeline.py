@@ -1,3 +1,10 @@
+import os
+import nvidia.cublas
+import nvidia.cudnn
+
+os.add_dll_directory(os.path.join(list(nvidia.cublas.__path__)[0], "bin"))
+os.add_dll_directory(os.path.join(list(nvidia.cudnn.__path__)[0], "bin"))
+
 from typing import Any
 from faster_whisper import WhisperModel
 from app.core.config import settings
