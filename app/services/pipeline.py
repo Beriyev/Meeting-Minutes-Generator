@@ -55,23 +55,3 @@ def summarize(transcript: str)->MeetingOutput:
 
     )
     return MeetingOutput.model_validate_json(response["message"]["content"])
-
-if __name__ == "__main__":
-    input_file = settings.uploads_dir / "videoplayback.mp4"
-    audio_file = settings.audio_dir / "videoplayback.wav"
-
-    print("Converting...")
-    convert_to_wav(str(input_file), str(audio_file))
-
-    print("Transcribing...")
-    segments = transcribe_audio(str(audio_file))
-    full_text = " ".join(seg["text"] for seg in segments)
-    print(f"Transcript length: {len(full_text)} chars\n")
-
-    print("Summarizing...")
-    result = summarize(full_text)
-    print("\n--- Meeting Minutes ---")
-    print(f"Summary: {result.summary}\n")
-    print(f"Key Points: {result.key_points}\n")
-    print(f"Action Items: {result.action_items}\n")
-    print(f"Decisions: {result.decisions}\n")
