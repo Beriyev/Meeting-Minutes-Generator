@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     whisper_device: str = "cpu"
     whisper_compute_type: str = "int8"
     whisper_model: str = "base" 
-
+    groq_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3.5:9b"
 
