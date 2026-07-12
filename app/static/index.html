@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beriyev's Meeting Minutes Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --border: #e3e3df;
+    --border-strong: #c9c9c4;
+    --text: #17171a;
+    --text-muted: #6e6e76;
+    --text-faint: #a4a4aa;
+    --accent: #2c4bff;
+    --accent-soft: #eef1ff;
+    --success: #1f8a5f;
+    --success-soft: #eaf6f0;
+    --error: #c43d3d;
+    --error-soft: #fbeded;
+    --warn: #b98900;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  header {
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .lede {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0;
+    max-width: 48ch;
+  }
+
+  /* Dropzone */
+
+  .dropzone {
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 32px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+
+  .dropzone:hover {
+    border-color: var(--accent);
+  }
+
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .dropzone input { display: none; }
+
+  .dropzone .action {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .dropzone .hint {
+    font-size: 12.5px;
+    color: var(--text-faint);
+  }
+
+  .filename-chip {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+  }
+
+  .filename-chip.visible { display: inline-flex; }
+
+  .filename-chip .name {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+  }
+
+  .filename-chip .size {
+    color: var(--text-faint);
+  }
+
+  button.submit {
+    margin-top: 16px;
+    width: 100%;
+    padding: 11px 16px;
+    background: var(--text);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    display: none;
+    transition: background 120ms ease;
+  }
+
+  button.submit.visible { display: block; }
+  button.submit:hover { background: #000; }
+  button.submit:disabled { background: var(--text-faint); cursor: not-allowed; }
+
+  /* Pipeline readout */
+
+  .readout {
+    display: none;
+    margin-top: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 20px 22px;
+  }
+
+  .readout.visible { display: block; }
+
+  .readout-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 18px;
+  }
+
+  .readout-title {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .readout-id {
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .stages {
+    display: flex;
+    align-items: center;
+  }
+
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stage-track {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .stage-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    flex-shrink: 0;
+    transition: background 150ms ease;
+  }
+
+  .stage-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-strong);
+    transition: background 150ms ease;
+  }
+
+  .stage:last-child .stage-line { display: none; }
+
+  .stage-label {
+    font-size: 12px;
+    color: var(--text-faint);
+    transition: color 150ms ease;
+  }
+
+  .stage.active .stage-dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .stage.active .stage-label { color: var(--text); font-weight: 500; }
+  .stage.active .stage-line { background: var(--accent); }
+
+  .stage.done .stage-dot { background: var(--success); }
+  .stage.done .stage-label { color: var(--text-muted); }
+  .stage.done .stage-line { background: var(--success); }
+
+  .stage.failed .stage-dot { background: var(--error); }
+  .stage.failed .stage-label { color: var(--error); font-weight: 500; }
+
+  .status-line {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--text-faint);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .status-line .elapsed {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .error-box {
+    display: none;
+    margin-top: 40px;
+    padding: 16px 18px;
+    border: 1px solid var(--error);
+    background: var(--error-soft);
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    color: var(--error);
+  }
+
+  .error-box.visible { display: block; }
+
+  .error-box .label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  /* Results */
+
+  .results {
+    display: none;
+    margin-top: 40px;
+  }
+
+  .results.visible { display: block; }
+
+  .result-block {
+    margin-bottom: 28px;
+  }
+
+  .result-block:last-child { margin-bottom: 0; }
+
+  .result-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+
+  .result-summary {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  ul.result-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  ul.result-list li {
+    position: relative;
+    padding-left: 18px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  ul.result-list li:last-child { margin-bottom: 0; }
+
+  ul.result-list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 5px;
+    height: 5px;
+    background: var(--text-faint);
+    border-radius: 50%;
+  }
+
+  .empty-note {
+    font-size: 13px;
+    color: var(--text-faint);
+    font-style: italic;
+  }
+
+  .reset-row {
+    margin-top: 32px;
+  }
+
+  .reset-link {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .reset-link:hover { color: var(--text); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Beriyev's Meeting Minutes Generator</div>
+      <h1>Turn a recording into structured minutes</h1>
+      <p class="lede">Upload a meeting video or audio file. It's converted, transcribed, and summarized into a summary, key points, action items, and decisions.</p>
+    </header>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="video/*,audio/*" />
+      <div class="action">Drop a file, or click to browse</div>
+      <div class="hint">MP4, MOV, MP3, WAV — up to 500MB</div>
+    </div>
+
+    <div class="filename-chip" id="filenameChip">
+      <span class="name mono" id="filenameText"></span>
+      <span class="size" id="filesizeText"></span>
+    </div>
+
+    <button class="submit" id="submitBtn">Generate minutes</button>
+
+    <div class="readout" id="readout">
+      <div class="readout-head">
+        <div class="readout-title">Pipeline</div>
+        <div class="readout-id mono" id="jobIdText"></div>
+      </div>
+      <div class="stages">
+        <div class="stage" data-stage="extract">
+          <div class="stage-track">
+            <div class="stage-dot"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div class="stage-label">Extract audio</div>
+        </div>
+        <div class="stage" data-stage="transcribe">
+          <div class="stage-track">
+            <div class="stage-dot"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div class="stage-label">Transcribe</div>
+        </div>
+        <div class="stage" data-stage="summarize">
+          <div class="stage-track">
+            <div class="stage-dot"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div class="stage-label">Summarize</div>
+        </div>
+      </div>
+      <div class="status-line">
+        <span id="statusText">Waiting to start</span>
+        <span class="elapsed mono" id="elapsedText">0:00</span>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox">
+      <div class="label">Failed</div>
+      <div id="errorText"></div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="result-block">
+        <div class="result-label">Summary</div>
+        <div class="result-summary" id="resSummary"></div>
+      </div>
+      <div class="result-block">
+        <div class="result-label">Key points</div>
+        <ul class="result-list" id="resKeyPoints"></ul>
+      </div>
+      <div class="result-block">
+        <div class="result-label">Action items</div>
+        <ul class="result-list" id="resActionItems"></ul>
+      </div>
+      <div class="result-block">
+        <div class="result-label">Decisions</div>
+        <ul class="result-list" id="resDecisions"></ul>
+      </div>
+      <div class="reset-row">
+        <button class="reset-link" id="resetBtn">Process another recording</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const API_BASE = '/api/meetings';
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const filenameChip = document.getElementById('filenameChip');
+  const filenameText = document.getElementById('filenameText');
+  const filesizeText = document.getElementById('filesizeText');
+  const submitBtn = document.getElementById('submitBtn');
+  const readout = document.getElementById('readout');
+  const jobIdText = document.getElementById('jobIdText');
+  const statusText = document.getElementById('statusText');
+  const elapsedText = document.getElementById('elapsedText');
+  const errorBox = document.getElementById('errorBox');
+  const errorText = document.getElementById('errorText');
+  const results = document.getElementById('results');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let selectedFile = null;
+  let pollTimer = null;
+  let elapsedTimer = null;
+  let startTime = null;
+
+  function formatSize(bytes) {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function formatElapsed(ms) {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return m + ':' + String(rem).padStart(2, '0');
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    filenameText.textContent = file.name;
+    filesizeText.textContent = formatSize(file.size);
+    filenameChip.classList.add('visible');
+    submitBtn.classList.add('visible');
+  }
+
+  submitBtn.addEventListener('click', startPipeline);
+  resetBtn.addEventListener('click', resetUI);
+
+  async function startPipeline() {
+    if (!selectedFile) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading…';
+    errorBox.classList.remove('visible');
+    results.classList.remove('visible');
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch(`${API_BASE}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      const data = await res.json();
+
+      jobIdText.textContent = data.job_id;
+      readout.classList.add('visible');
+      submitBtn.textContent = 'Generate minutes';
+      submitBtn.disabled = true;
+
+      startTime = Date.now();
+      elapsedTimer = setInterval(() => {
+        elapsedText.textContent = formatElapsed(Date.now() - startTime);
+      }, 1000);
+
+      setStage('extract', 'active');
+      statusText.textContent = 'Extracting audio';
+
+      pollStatus(data.job_id);
+    } catch (err) {
+      showError(err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Generate minutes';
+    }
+  }
+
+  function pollStatus(jobId) {
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/${jobId}/status`);
+        if (!res.ok) throw new Error(`Status check failed (${res.status})`);
+        const data = await res.json();
+
+        if (data.status === 'processing') {
+          setStage('extract', 'done');
+          setStage('transcribe', 'active');
+          statusText.textContent = 'Transcribing';
+        } else if (data.status === 'done') {
+          setStage('extract', 'done');
+          setStage('transcribe', 'done');
+          setStage('summarize', 'done');
+          statusText.textContent = 'Done';
+          clearInterval(pollTimer);
+          clearInterval(elapsedTimer);
+          fetchResult(jobId);
+        } else if (data.status === 'failed') {
+          clearInterval(pollTimer);
+          clearInterval(elapsedTimer);
+          showError(data.error || 'The pipeline stopped unexpectedly.');
+        }
+      } catch (err) {
+        clearInterval(pollTimer);
+        clearInterval(elapsedTimer);
+        showError(err.message);
+      }
+    }, 2000);
+  }
+
+  async function fetchResult(jobId) {
+    try {
+      const res = await fetch(`${API_BASE}/${jobId}/result`);
+      if (!res.ok) throw new Error(`Could not load result (${res.status})`);
+      const data = await res.json();
+      renderResult(data);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  function renderResult(data) {
+    document.getElementById('resSummary').textContent = data.summary || '';
+    fillList('resKeyPoints', data.key_points);
+    fillList('resActionItems', data.action_items);
+    fillList('resDecisions', data.decisions);
+    results.classList.add('visible');
+  }
+
+  function fillList(elId, items) {
+    const el = document.getElementById(elId);
+    el.innerHTML = '';
+    if (!items || items.length === 0) {
+      const note = document.createElement('div');
+      note.className = 'empty-note';
+      note.textContent = 'None identified.';
+      el.appendChild(note);
+      return;
+    }
+    items.forEach((item) => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      el.appendChild(li);
+    });
+  }
+
+  function setStage(name, state) {
+    const el = document.querySelector(`.stage[data-stage="${name}"]`);
+    if (!el) return;
+    el.classList.remove('active', 'done', 'failed');
+    if (state) el.classList.add(state);
+  }
+
+  function showError(message) {
+    errorText.textContent = message;
+    errorBox.classList.add('visible');
+    statusText.textContent = 'Stopped';
+  }
+
+  function resetUI() {
+    selectedFile = null;
+    fileInput.value = '';
+    filenameChip.classList.remove('visible');
+    submitBtn.classList.remove('visible');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Generate minutes';
+    readout.classList.remove('visible');
+    errorBox.classList.remove('visible');
+    results.classList.remove('visible');
+    document.querySelectorAll('.stage').forEach((el) => el.classList.remove('active', 'done', 'failed'));
+    if (pollTimer) clearInterval(pollTimer);
+    if (elapsedTimer) clearInterval(elapsedTimer);
+  }
+</script>
+</body>
+</html>
