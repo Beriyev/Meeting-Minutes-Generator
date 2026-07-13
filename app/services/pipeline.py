@@ -4,16 +4,10 @@ import ffmpy
 from pathlib import Path
 from groq import Groq
 import ollama 
-from pydantic import BaseModel
+from app.models.schemas import MeetingOutput
 
 groq_client = Groq(api_key=settings.groq_api_key) 
 client = ollama.Client(host=settings.ollama_base_url)
-
-class MeetingOutput(BaseModel):
-    summary: str
-    key_points: list[str]
-    action_items: list[str]
-    decisions: list[str]
 
 def convert_to_wav(input_path: str, output_path: str)-> None:
     ff = ffmpy.FFmpeg(
