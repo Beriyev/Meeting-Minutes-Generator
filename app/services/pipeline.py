@@ -46,6 +46,6 @@ def summarize(transcript: str)->MeetingOutput:
         model = settings.ollama_model,
         messages = [{"role": "user","content": f"summarize the following transcript and provide a summary, key points, action items, and decisions in JSON format:\n\n{transcript}"}],
         format = MeetingOutput.model_json_schema(),
-
+        options={"num_predict": 2048}
     )
     return MeetingOutput.model_validate_json(response["message"]["content"])

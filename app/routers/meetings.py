@@ -9,10 +9,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/meetings", tags=["meetings"])
+router = APIRouter(prefix="/api/meetings", tags=["meetings"])
 
 @router.post("/upload")
-async def upload_meeting(file: UploadFile):
+async def upload_meeting(file: UploadFile, background_tasks: BackgroundTasks):
     if file.filename is None or file.filename == "":
         raise HTTPException(status_code=400, detail="No file uploaded.")
     if not file.filename.endswith((".mp4", ".mp3", ".wav")):
@@ -24,21 +24,36 @@ async def upload_meeting(file: UploadFile):
     content = await file.read()
     with open(file_path, "wb") as f:
         f.write(content)
+    background_tasks.add_task(process_job, job_id=job_id, file_path=str(file_path))
+    return {"job_id": job_id}
 
 def process_job(job_id: str, file_path: str):
-    job = get_job(job_id)
-    if job is None:
-        raise ValueError(f"Job with job_id {job_id} does not exist")
     update_job(job_id=job_id, status="in_progress")
     try:
         result = run_pipeline(file_path)
-        update_job(job_id=job_id, status="completed", minutes=result["minutes"], segments=result["segments"])
+        update_job(job_id=job_id, status="completed", minutes=result["minutes"])
     except Exception as e:
         logger.error(f"Error processing job {job_id}: {e}")
         update_job(job_id=job_id, status="failed", error_message=str(e))
     finally:
         Path(file_path).unlink(missing_ok=True)
 
-
+@router.get("/{job_id}/status")
+async def get_job_status(job_id: str):
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return {
+        "status": job.status,
+        "error": job.error_message,
+    }
     
-
+@router.get("/{job_id}/result")
+async def get_job_result(job_id: str):
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job.status != "completed":
+        raise HTTPException(status_code=400, detail="Job is not completed yet.")
+    return job.minutes
+    

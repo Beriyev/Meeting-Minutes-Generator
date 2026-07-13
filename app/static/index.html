@@ -559,11 +559,11 @@
         if (!res.ok) throw new Error(`Status check failed (${res.status})`);
         const data = await res.json();
 
-        if (data.status === 'processing') {
+        if (data.status === 'in_progress') {
           setStage('extract', 'done');
           setStage('transcribe', 'active');
           statusText.textContent = 'Transcribing';
-        } else if (data.status === 'done') {
+        } else if (data.status === 'completed') {
           setStage('extract', 'done');
           setStage('transcribe', 'done');
           setStage('summarize', 'done');
